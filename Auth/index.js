@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 require('dotenv').config()
 const AuthToken = async(req, res, next) =>{
-    const token = req.header('Authentication');
+    const token = req.header('Authorization');
     if(!token){
         return res.status(401).send({error: 'Access Denied'});
     }
@@ -15,3 +15,4 @@ const AuthToken = async(req, res, next) =>{
 }
 
 module.exports = AuthToken;
+

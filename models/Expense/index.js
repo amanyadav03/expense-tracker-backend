@@ -6,7 +6,9 @@ const expenseSchema = new Schema({
     expenseId:String,
     category:String,
     amount: Number,
-    date: {type:Date},
+    paymentMethod: String,
+    date: {type:Date, default: Date.now},
+    createdAt: {type:Date, default: Date.now},
     description: String,
 })
 
