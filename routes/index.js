@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 
 const Expense = require('../models/Expense');
 const ExpenseCategory = require('../models/ExpenseCategory');
+const Income = require('../models/Income');
 var router = express.Router();
 
 router.post('/register', async (req, res) => {
@@ -93,9 +94,11 @@ router.post('/login', async (req, res) => {
           {
               userName: user.userName,
               userId: user.userId,
+              name: user.name,
               email: user.email,
               mobile: user.mobile,
               role: user.role,
+              monthlyBudget: user.monthlyBudget,
           },
           process.env.JWT_SECRET,
           { expiresIn: '7d' }  // Changed to 7 days for better security
@@ -174,6 +177,78 @@ router.get('/expense/category', AuthToken, async(req, res)=>{
     res.status(200).json(response);
   }catch(error){
     res.status(500).json({message:'could not get expense'})
+  }
+})
+
+router.post('/income', AuthToken, async (req, res) => {
+  try{
+    const {amount, category, date, description, source, paymentMethod, isRecurring, frequency} = req.body;
+    const {userId} = req.user;
+    const incomeData = {
+      userId,
+      amount, 
+      category: category.toLowerCase(), 
+      date, 
+      description, 
+      source, 
+      paymentMethod, 
+      isRecurring, 
+      frequency
+    }
+    console.log();
+    const response  = await Income.create(incomeData);
+    res.status(200).json(response);
+  }catch(err){
+    console.error(err)
+    res.status(500).json({message:err});
+  }
+});
+
+router.get('/income', AuthToken, async (req, res) => {
+  try{
+    const {userId} = req.user;
+    const response  = await Income.find({userId : userId});
+    res.status(200).json({
+      income: response
+    });
+  }catch(err){
+    res.status(500).json({message:err});
+  }
+});
+
+router.get('/transactions', AuthToken, async(req, res)=>{
+  try{
+    const {userId} = req.user;
+    const expense = await Expense.find({userId: userId});
+    const income = await Income.find({userId: userId});
+    const response = [...expense, ...income];
+    res.status(200).json({txn: response});
+  }catch(error){
+    res.status(500).json({message:'could not get transactions', error: error});
+  }
+});
+
+router.get('/dashboard', AuthToken, async(req, res)=>{
+  try{
+    const {userId} = req.user;
+    const expenseTotal = await Expense.aggregate([
+      {$match:{userId}},
+      {$group : { _id: null, total: {$sum: "$amount"}}},
+    ]);
+
+    const incomeTotal = await Income.aggregate([
+      {$match: {userId}},
+      {$group: {_id: null, total: {$sum: "$amount"}}},
+    ]);
+
+    const expenseByCat = await Expense.aggregate([
+      {$match: {userId}},
+      {$group: {_id: "$category", total: {$sum: "$amount"}}}
+    ])
+
+    res.status(200).json({expense: expenseTotal, income: incomeTotal, expenseByCategory: expenseByCat});
+  }catch(err){
+    res.status(500).json({message:'cannot fetch dashboard data', error: err});
   }
 })
 
